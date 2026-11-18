@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,11 +21,11 @@
             margin-top: 10px;
         }
         #message {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: bold;
             margin: 15px 0;
             color: #e74c3c;
-            height: 35px;
+            min-height: 32px;
         }
         #restartBtn {
             display: none;
@@ -38,7 +38,6 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            box-shadow: 0px 4px 6px rgba(0,0,0,0.3);
         }
         #restartBtn:hover {
             background-color: #d35400;
@@ -47,11 +46,11 @@
 </head>
 <body>
     <h1>Naruto: Missão Ninja</h1>
-    <p>Usa <b>W, A, D</b> para mover e saltar. Prime <b>F</b> para atirar Shurikens!</p>
+    <p><b>A / D</b> ou <b>Setas</b> para andar | <b>W / Espaço</b> para pular | <b>F</b> Shuriken | <b>R</b> Rasengan</p>
     
     <canvas id="gameCanvas" width="800" height="400"></canvas>
     <div id="message"></div>
-    <button id="restartBtn" onclick="reiniciarJogo()">Tentar Novamente</button>
+    <button id="restartBtn" onclick="reiniciarJogo()">Jogar Novamente</button>
 
     <script src="script.js"></script>
 </body>
