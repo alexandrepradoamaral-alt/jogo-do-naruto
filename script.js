@@ -3,11 +3,11 @@ const ctx = canvas.getContext("2d");
 const mensagemEl = document.getElementById("message");
 const restartBtn = document.getElementById("restartBtn");
 
-// CONTROLE DE FPS (Garante a mesma velocidade em qualquer monitor)
+// CONTROLE DE 60 FPS (Mantém a velocidade normal em qualquer monitor)
 let ultimoTempo = 0;
 const fpsIntervalo = 1000 / 60;
 
-// VARIÁVEIS PRINCIPAIS
+// VARIÁVEIS DO JOGO
 let pontos = 0;
 let vidas = 3;
 let chakra = 100;
@@ -17,35 +17,75 @@ let vitoria = false;
 const gravidade = 0.55;
 let anguloShuriken = 0;
 let frameAnimacao = 0;
+
 let nuvens = [
     { x: 100, y: 50, vel: 0.3 },
     { x: 400, y: 80, vel: 0.2 },
     { x: 700, y: 40, vel: 0.4 }
 ];
 
-// TECLADO
+// CONTROLES
 const teclas = {};
-window.addEventListener("keydown", (e) => teclas[e.code] = true);
-window.addEventListener("keyup", (e) => teclas[e.code] = false);
+window.addEventListener("keydown", function(e) {
+    teclas[e.code] = true;
 
-// NARUTO (Mude "velocidade" aqui se quiser ainda mais lento ou mais rápido)
+    if (gameOver || vitoria) return;
+
+    // TECLA F: SHURIKEN
+    if (e.code === "KeyF" && podeAtirar) {
+        shurikens.push({
+            x: jogador.x + 14,
+            y: jogador.y + 20,
+            velX: 8 * jogador.direcao,
+            tamanho: 14
+        });
+        podeAtirar = false;
+        setTimeout(function() { podeAtirar = true; }, 400);
+    }
+
+    // TECLA R: RASENGAN
+    if (e.code === "KeyR" && chakra >= 50) {
+        chakra -= 50;
+        rasengans.push({
+            x: jogador.x + (jogador.direcao === 1 ? 30 : -20),
+            y: jogador.y + 15,
+            velX: 6 * jogador.direcao,
+            raio: 18,
+            vida: 60
+        });
+    }
+});
+
+window.addEventListener("keyup", function(e) {
+    teclas[e.code] = false;
+});
+
+// JOGADOR (NARUTO)
 const jogador = {
-    x: 50, y: 300, largura: 28, altura: 42,
-    velX: 0, velY: 0, velocidade: 2.6, forcaPulo: -11.5,
-    noChao: false, direcao: 1, invulneravel: false
+    x: 50,
+    y: 300,
+    largura: 28,
+    altura: 42,
+    velX: 0,
+    velY: 0,
+    velocidade: 2.6,
+    forcaPulo: -11.5,
+    noChao: false,
+    direcao: 1,
+    invulneravel: false
 };
 
-// ATAQUES E EFEITOS
 let shurikens = [];
 let rasengans = [];
 let particulas = [];
 let podeAtirar = true;
 
-// DADOS DAS FASES
+// FASES DO JOGO
 const fases = [
-    {   // FASE 1 - Aldeia da Folha
+    {
         nome: "Aldeia da Folha",
-        corTopo: "#2980b9", corFundoBase: "#6dd5fa",
+        corTopo: "#2980b9",
+        corFundoBase: "#6dd5fa",
         corMontanha: "#5dade2",
         plataformas: [
             { x: 0, y: 380, largura: 800, altura: 20 },
@@ -58,9 +98,10 @@ const fases = [
         ],
         porta: { x: 720, y: 310, largura: 50, altura: 70 }
     },
-    {   // FASE 2 - Floresta da Morte
+    {
         nome: "Floresta da Morte",
-        corTopo: "#0f2027", corFundoBase: "#2c5364",
+        corTopo: "#0f2027",
+        corFundoBase: "#2c5364",
         corMontanha: "#1c313a",
         plataformas: [
             { x: 0, y: 380, largura: 260, altura: 20 },
@@ -75,9 +116,10 @@ const fases = [
         ],
         porta: { x: 730, y: 310, largura: 50, altura: 70 }
     },
-    {   // FASE 3 - Vale do Fim (Com Chefe Final!)
+    {
         nome: "Vale do Fim - CHEFE",
-        corTopo: "#1a0000", corFundoBase: "#660000",
+        corTopo: "#1a0000",
+        corFundoBase: "#660000",
         corMontanha: "#330000",
         plataformas: [
             { x: 0, y: 380, largura: 800, altura: 20 },
@@ -96,7 +138,7 @@ const fases = [
 let plataformasAtuais = [];
 let inimigosAtuais = [];
 let portaAtual = {};
-let faseAtiva = null;
+let faseAtiva = fases[0];
 
 function carregarFase(index) {
     if (index >= fases.length) {
@@ -110,7 +152,7 @@ function carregarFase(index) {
     plataformasAtuais = JSON.parse(JSON.stringify(faseAtiva.plataformas));
     inimigosAtuais = JSON.parse(JSON.stringify(faseAtiva.inimigos));
     portaAtual = Object.assign({}, faseAtiva.porta);
-    
+
     jogador.x = 40;
     jogador.y = 300;
     jogador.velY = 0;
@@ -133,56 +175,27 @@ function criarFumo(x, y, cor) {
     }
 }
 
-window.addEventListener("keydown", (e) => {
-    if (gameOver || vitoria) return;
-
-    // TECLA F: ATIRAR SHURIKEN
-    if (e.code === "KeyF" && podeAtirar) {
-        shurikens.push({
-            x: jogador.x + 14,
-            y: jogador.y + 20,
-            velX: 8 * jogador.direcao,
-            tamanho: 14
-        });
-        podeAtirar = false;
-        setTimeout(() => podeAtirar = true, 400);
-    }
-
-    // TECLA R: LANÇAR RASENGAN
-    if (e.code === "KeyR" && chakra >= 50) {
-        chakra -= 50;
-        rasengans.push({
-            x: jogador.x + (jogador.direcao === 1 ? 30 : -20),
-            y: jogador.y + 10,
-            velX: 6 * jogador.direcao,
-            raio: 18,
-            vida: 60
-        });
-    }
-});
-
 function atualizar() {
     if (gameOver || vitoria) return;
 
     anguloShuriken += 0.3;
     if (chakra < 100) chakra += 0.15;
 
-    nuvens.forEach(n => {
+    nuvens.forEach(function(n) {
         n.x -= n.vel;
         if (n.x < -100) n.x = canvas.width + 50;
     });
 
-    // Movimento do Naruto
-    if (teclas["ArrowLeft"] || teclas["KeyA"]) { 
-        jogador.velX = -jogador.velocidade; 
+    if (teclas["ArrowLeft"] || teclas["KeyA"]) {
+        jogador.velX = -jogador.velocidade;
         jogador.direcao = -1;
         frameAnimacao += 0.18;
-    } else if (teclas["ArrowRight"] || teclas["KeyD"]) { 
-        jogador.velX = jogador.velocidade; 
+    } else if (teclas["ArrowRight"] || teclas["KeyD"]) {
+        jogador.velX = jogador.velocidade;
         jogador.direcao = 1;
         frameAnimacao += 0.18;
-    } else { 
-        jogador.velX = 0; 
+    } else {
+        jogador.velX = 0;
         frameAnimacao = 0;
     }
 
@@ -199,36 +212,42 @@ function atualizar() {
     if (jogador.x + jogador.largura > canvas.width) jogador.x = canvas.width - jogador.largura;
     if (jogador.y > canvas.height) perderVida();
 
-    // Plataformas
     jogador.noChao = false;
-    plataformasAtuais.forEach(plat => {
-        if (jogador.x < plat.x + plat.largura && jogador.x + jogador.largura > plat.x &&
-            jogador.y + jogador.altura >= plat.y && jogador.y + jogador.altura <= plat.y + jogador.velY + 4) {
+    plataformasAtuais.forEach(function(plat) {
+        if (jogador.x < plat.x + plat.largura &&
+            jogador.x + jogador.largura > plat.x &&
+            jogador.y + jogador.altura >= plat.y &&
+            jogador.y + jogador.altura <= plat.y + jogador.velY + 4) {
             jogador.noChao = true;
             jogador.y = plat.y - jogador.altura;
             jogador.velY = 0;
         }
     });
 
-    // Passar de Fase
     if (inimigosAtuais.length === 0) {
-        if (jogador.x < portaAtual.x + portaAtual.largura && jogador.x + jogador.largura > portaAtual.x &&
-            jogador.y < portaAtual.y + portaAtual.altura && jogador.y + jogador.altura > portaAtual.y) {
+        if (jogador.x < portaAtual.x + portaAtual.largura &&
+            jogador.x + jogador.largura > portaAtual.x &&
+            jogador.y < portaAtual.y + portaAtual.altura &&
+            jogador.y + jogador.altura > portaAtual.y) {
             faseAtual++;
             carregarFase(faseAtual);
         }
     }
 
-    // Atualizar Shurikens
     for (let i = shurikens.length - 1; i >= 0; i--) {
         let sh = shurikens[i];
         sh.x += sh.velX;
-        if (sh.x < 0 || sh.x > canvas.width) { shurikens.splice(i, 1); continue; }
+        if (sh.x < 0 || sh.x > canvas.width) {
+            shurikens.splice(i, 1);
+            continue;
+        }
 
         for (let j = inimigosAtuais.length - 1; j >= 0; j--) {
             let inimigo = inimigosAtuais[j];
-            if (sh.x < inimigo.x + inimigo.largura && sh.x + sh.tamanho > inimigo.x &&
-                sh.y < inimigo.y + inimigo.altura && sh.y + sh.tamanho > inimigo.y) {
+            if (sh.x < inimigo.x + inimigo.largura &&
+                sh.x + sh.tamanho > inimigo.x &&
+                sh.y < inimigo.y + inimigo.altura &&
+                sh.y + sh.tamanho > inimigo.y) {
                 inimigo.hp--;
                 shurikens.splice(i, 1);
                 criarFumo(inimigo.x, inimigo.y, "#fff");
@@ -241,17 +260,21 @@ function atualizar() {
         }
     }
 
-    // Atualizar Rasengans
     for (let i = rasengans.length - 1; i >= 0; i--) {
         let ras = rasengans[i];
         ras.x += ras.velX;
         ras.vida--;
-        if (ras.vida <= 0 || ras.x < 0 || ras.x > canvas.width) { rasengans.splice(i, 1); continue; }
+        if (ras.vida <= 0 || ras.x < 0 || ras.x > canvas.width) {
+            rasengans.splice(i, 1);
+            continue;
+        }
 
         for (let j = inimigosAtuais.length - 1; j >= 0; j--) {
             let inimigo = inimigosAtuais[j];
-            if (ras.x - ras.raio < inimigo.x + inimigo.largura && ras.x + ras.raio > inimigo.x &&
-                ras.y - ras.raio < inimigo.y + inimigo.altura && ras.y + ras.raio > inimigo.y) {
+            if (ras.x - ras.raio < inimigo.x + inimigo.largura &&
+                ras.x + ras.raio > inimigo.x &&
+                ras.y - ras.raio < inimigo.y + inimigo.altura &&
+                ras.y + ras.raio > inimigo.y) {
                 inimigo.hp -= 3;
                 rasengans.splice(i, 1);
                 criarFumo(inimigo.x, inimigo.y, "#3498db");
@@ -264,7 +287,6 @@ function atualizar() {
         }
     }
 
-    // Partículas de Fumo
     for (let i = particulas.length - 1; i >= 0; i--) {
         let p = particulas[i];
         p.x += p.velX;
@@ -273,13 +295,17 @@ function atualizar() {
         if (p.vida <= 0) particulas.splice(i, 1);
     }
 
-    // Inimigos
-    inimigosAtuais.forEach(inimigo => {
+    inimigosAtuais.forEach(function(inimigo) {
         inimigo.x += inimigo.vel * inimigo.dir;
-        if (inimigo.x <= inimigo.minX || inimigo.x + inimigo.largura >= inimigo.maxX) inimigo.dir *= -1;
-        
-        if (!jogador.invulneravel && jogador.x + 5 < inimigo.x + inimigo.largura - 5 && jogador.x + jogador.largura - 5 > inimigo.x + 5 &&
-            jogador.y + 5 < inimigo.y + inimigo.altura && jogador.y + jogador.altura > inimigo.y + 5) {
+        if (inimigo.x <= inimigo.minX || inimigo.x + inimigo.largura >= inimigo.maxX) {
+            inimigo.dir *= -1;
+        }
+
+        if (!jogador.invulneravel &&
+            jogador.x + 5 < inimigo.x + inimigo.largura - 5 &&
+            jogador.x + jogador.largura - 5 > inimigo.x + 5 &&
+            jogador.y + 5 < inimigo.y + inimigo.altura &&
+            jogador.y + jogador.altura > inimigo.y + 5) {
             perderVida();
         }
     });
@@ -298,7 +324,7 @@ function perderVida() {
         jogador.y = 300;
         jogador.velY = 0;
         jogador.invulneravel = true;
-        setTimeout(() => jogador.invulneravel = false, 1500);
+        setTimeout(function() { jogador.invulneravel = false; }, 1500);
     }
 }
 
@@ -324,7 +350,7 @@ function desenharCenario() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
-    nuvens.forEach(n => {
+    nuvens.forEach(function(n) {
         ctx.fillRect(n.x, n.y, 70, 20);
         ctx.fillRect(n.x + 15, n.y - 10, 40, 15);
     });
@@ -347,7 +373,7 @@ function desenharPortal() {
     ctx.fillStyle = aberto ? "#e74c3c" : "#555";
     ctx.fillRect(x + 8, y + 10, 8, 60);
     ctx.fillRect(x + 34, y + 10, 8, 60);
-    
+
     ctx.fillStyle = aberto ? "#c0392b" : "#333";
     ctx.fillRect(x, y + 5, 50, 8);
     ctx.fillRect(x + 4, y + 18, 42, 5);
@@ -365,13 +391,13 @@ function desenharNaruto(x, y, dir, anim) {
     if (dir === -1) {
         ctx.translate(x + 28, y);
         ctx.scale(-1, 1);
-        x = 0; y = 0;
+        x = 0;
+        y = 0;
     }
 
     let passo = Math.sin(anim) * 4;
     if (!jogador.noChao) passo = 4;
 
-    // Pernas e Sandálias
     ctx.fillStyle = "#e67e22";
     ctx.fillRect(x + 6 - passo, y + 30, 6, 9);
     ctx.fillRect(x + 16 + passo, y + 30, 6, 9);
@@ -379,24 +405,20 @@ function desenharNaruto(x, y, dir, anim) {
     ctx.fillRect(x + 6 - passo, y + 39, 7, 3);
     ctx.fillRect(x + 16 + passo, y + 39, 7, 3);
 
-    // Braço de trás
     ctx.fillStyle = "#d35400";
     ctx.fillRect(x + 10 + passo, y + 19, 6, 10);
 
-    // Casaco Laranja e Preto
     ctx.fillStyle = "#e67e22";
     ctx.fillRect(x + 6, y + 17, 16, 13);
     ctx.fillStyle = "#111";
     ctx.fillRect(x + 6, y + 17, 16, 4);
     ctx.fillRect(x + 16, y + 17, 2, 13);
 
-    // Braço da frente e Mão
     ctx.fillStyle = "#f39c12";
     ctx.fillRect(x + 10 - passo, y + 19, 6, 8);
     ctx.fillStyle = "#ffcc99";
     ctx.fillRect(x + 10 - passo, y + 27, 5, 4);
 
-    // Cabeça
     ctx.fillStyle = "#ffcc99";
     ctx.fillRect(x + 6, y + 5, 16, 12);
     ctx.fillStyle = "#2980b9";
@@ -405,7 +427,6 @@ function desenharNaruto(x, y, dir, anim) {
     ctx.fillRect(x + 13, y + 13, 3, 1);
     ctx.fillRect(x + 13, y + 15, 3, 1);
 
-    // Bandana
     ctx.fillStyle = "#1f618d";
     ctx.fillRect(x + 5, y + 5, 18, 4);
     ctx.fillStyle = "#bdc3c7";
@@ -414,7 +435,6 @@ function desenharNaruto(x, y, dir, anim) {
     ctx.fillRect(x + 1, y + 6, 4, 3);
     ctx.fillRect(x - 1, y + 8, 3, 3);
 
-    // Cabelo Loiro
     ctx.fillStyle = "#f1c40f";
     ctx.fillRect(x + 5, y + 1, 18, 4);
     ctx.fillRect(x + 3, y + 3, 4, 3);
@@ -446,4 +466,119 @@ function desenharInimigo(inimigo) {
     ctx.fillRect(x + 2, y + 18 + passo, 4, 10);
     ctx.fillRect(x + 22, y + 18 - passo, 4, 10);
 
-    if (inimigo
+    if (inimigo.tipo === "chefe") {
+        ctx.fillStyle = "#e67e22";
+        ctx.fillRect(x + 7, y + 5, 14, 11);
+        ctx.fillStyle = "#ff0000";
+        let olhoX = inimigo.dir === 1 ? x + 16 : x + 9;
+        ctx.fillRect(olhoX, y + 8, 3, 3);
+    } else {
+        ctx.fillStyle = "#ffcc99";
+        ctx.fillRect(x + 7, y + 5, 14, 11);
+        ctx.fillStyle = "#222";
+        ctx.fillRect(x + 7, y + 11, 14, 5);
+        ctx.fillStyle = "#ff0000";
+        let olhoOffset = inimigo.dir === 1 ? 14 : 8;
+        ctx.fillRect(x + olhoOffset, y + 8, 3, 2);
+        ctx.fillRect(x + olhoOffset + 4, y + 8, 3, 2);
+    }
+
+    if (inimigo.maxHp > 1) {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(x, y - 8, 28, 4);
+        ctx.fillStyle = "#e74c3c";
+        ctx.fillRect(x, y - 8, (inimigo.hp / inimigo.maxHp) * 28, 4);
+    }
+}
+
+function desenhar() {
+    desenharCenario();
+    desenharPortal();
+
+    plataformasAtuais.forEach(function(p) {
+        ctx.fillStyle = "#5d4037";
+        ctx.fillRect(p.x, p.y + 7, p.largura, p.altura - 7);
+        ctx.fillStyle = "#27ae60";
+        ctx.fillRect(p.x, p.y, p.largura, 7);
+        ctx.strokeStyle = "#1e272e";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(p.x, p.y, p.largura, p.altura);
+    });
+
+    inimigosAtuais.forEach(function(i) {
+        desenharInimigo(i);
+    });
+
+    shurikens.forEach(function(sh) {
+        ctx.save();
+        ctx.translate(sh.x, sh.y);
+        ctx.rotate(anguloShuriken);
+        ctx.fillStyle = "#bdc3c7";
+        ctx.fillRect(-sh.tamanho / 2, -2, sh.tamanho, 4);
+        ctx.fillRect(-2, -sh.tamanho / 2, 4, sh.tamanho);
+        ctx.fillStyle = "#2c3e50";
+        ctx.fillRect(-2, -2, 4, 4);
+        ctx.restore();
+    });
+
+    rasengans.forEach(function(ras) {
+        ctx.beginPath();
+        ctx.arc(ras.x, ras.y, ras.raio, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(52, 152, 219, 0.7)";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(ras.x, ras.y, ras.raio * 0.6, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+    });
+
+    particulas.forEach(function(p) {
+        ctx.fillStyle = p.cor;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.raio, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    desenharNaruto(jogador.x, jogador.y, jogador.direcao, frameAnimacao);
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(10, 10, 210, 105);
+    ctx.strokeStyle = "#e67e22";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, 210, 105);
+
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 14px Arial";
+    ctx.fillText("Fase: " + faseAtiva.nome, 20, 30);
+    ctx.fillText("Pontos: " + pontos + "  |  Vidas: " + vidas, 20, 52);
+
+    ctx.fillText("Chakra (Tecla R):", 20, 74);
+    ctx.fillStyle = "#333";
+    ctx.fillRect(20, 80, 180, 12);
+    ctx.fillStyle = chakra >= 50 ? "#00f2fe" : "#2980b9";
+    ctx.fillRect(20, 80, (chakra / 100) * 180, 12);
+
+    if (inimigosAtuais.length > 0) {
+        ctx.fillStyle = "#f1c40f";
+        ctx.font = "bold 13px Arial";
+        ctx.fillText("Derrote os inimigos para abrir o portal!", 520, 25);
+    }
+}
+
+function loop(tempoAtual) {
+    if (gameOver || vitoria) return;
+    requestAnimationFrame(loop);
+
+    if (!ultimoTempo) ultimoTempo = tempoAtual;
+    const decorrido = tempoAtual - ultimoTempo;
+
+    if (decorrido >= fpsIntervalo) {
+        ultimoTempo = tempoAtual - (decorrido % fpsIntervalo);
+        atualizar();
+        desenhar();
+    }
+}
+
+carregarFase(0);
+requestAnimationFrame(loop);
+// FIM DO CÓDIGO
