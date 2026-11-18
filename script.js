@@ -6,71 +6,86 @@ const restartBtn = document.getElementById("restartBtn");
 // VARIÁVEIS PRINCIPAIS
 let pontos = 0;
 let vidas = 3;
+let chakra = 100; // Nova barra de energia para o Rasengan!
 let faseAtual = 0;
 let gameOver = false;
 let vitoria = false;
 const gravidade = 0.55;
 let anguloShuriken = 0;
-let frameAnimacao = 0; // Controla o movimento das pernas e braços
+let frameAnimacao = 0;
+let nuvens = [
+    { x: 100, y: 50, vel: 0.3 },
+    { x: 400, y: 80, vel: 0.2 },
+    { x: 700, y: 40, vel: 0.4 }
+];
 
 // TECLADO
 const teclas = {};
 window.addEventListener("keydown", (e) => teclas[e.code] = true);
 window.addEventListener("keyup", (e) => teclas[e.code] = false);
 
-// NARUTO (JOGADOR - Agora com velocidade ajustada e proporção de personagem)
+// NARUTO
 const jogador = {
     x: 50, y: 300, largura: 28, altura: 42,
-    velX: 0, velY: 0, velocidade: 3.5, forcaPulo: -11.5,
-    noChao: false, direcao: 1
+    velX: 0, velY: 0, velocidade: 3.6, forcaPulo: -11.5,
+    noChao: false, direcao: 1, invulneravel: false
 };
 
-// SHURIKENS
+// ATAQUES E EFEITOS
 let shurikens = [];
+let rasengans = [];
+let particulas = [];
 let podeAtirar = true;
 
 // DADOS DAS FASES
 const fases = [
     {   // FASE 1 - Aldeia da Folha
-        corTopo: "#4facfe", corFundoBase: "#00f2fe",
+        nome: "Aldeia da Folha",
+        corTopo: "#2980b9", corFundoBase: "#6dd5fa",
+        corMontanha: "#5dade2",
         plataformas: [
             { x: 0, y: 380, largura: 800, altura: 20 },
             { x: 200, y: 300, largura: 110, altura: 20 },
-            { x: 400, y: 220, largura: 110, altura: 20 }
+            { x: 400, y: 220, largura: 110, altura: 20 },
+            { x: 580, y: 290, largura: 90, altura: 20 }
         ],
         inimigos: [
-            { x: 400, y: 338, largura: 28, altura: 42, vel: 1.5, dir: 1, minX: 280, maxX: 520, tipo: "renegado" }
+            { x: 400, y: 338, largura: 28, altura: 42, vel: 1.5, dir: 1, minX: 280, maxX: 550, tipo: "renegado", hp: 1, maxHp: 1 }
         ],
-        porta: { x: 710, y: 320, largura: 40, altura: 60 }
+        porta: { x: 720, y: 310, largura: 50, altura: 70 }
     },
     {   // FASE 2 - Floresta da Morte
-        corTopo: "#1e272e", corFundoBase: "#485460",
+        nome: "Floresta da Morte",
+        corTopo: "#0f2027", corFundoBase: "#2c5364",
+        corMontanha: "#1c313a",
         plataformas: [
-            { x: 0, y: 380, largura: 280, altura: 20 },
-            { x: 380, y: 380, largura: 420, altura: 20 },
-            { x: 150, y: 280, largura: 90, altura: 20 },
-            { x: 340, y: 210, largura: 90, altura: 20 },
-            { x: 530, y: 150, largura: 100, altura: 20 }
+            { x: 0, y: 380, largura: 260, altura: 20 },
+            { x: 360, y: 380, largura: 440, altura: 20 },
+            { x: 140, y: 280, largura: 90, altura: 20 },
+            { x: 320, y: 210, largura: 90, altura: 20 },
+            { x: 520, y: 150, largura: 100, altura: 20 }
         ],
         inimigos: [
-            { x: 450, y: 338, largura: 28, altura: 42, vel: 2, dir: -1, minX: 390, maxX: 740, tipo: "akatsuki" },
-            { x: 540, y: 108, largura: 28, altura: 42, vel: 1, dir: 1, minX: 530, maxX: 600, tipo: "renegado" }
+            { x: 450, y: 338, largura: 28, altura: 42, vel: 2, dir: -1, minX: 370, maxX: 700, tipo: "akatsuki", hp: 2, maxHp: 2 },
+            { x: 530, y: 108, largura: 28, altura: 42, vel: 1.2, dir: 1, minX: 520, maxX: 590, tipo: "renegado", hp: 1, maxHp: 1 }
         ],
-        porta: { x: 740, y: 320, largura: 40, altura: 60 }
+        porta: { x: 730, y: 310, largura: 50, altura: 70 }
     },
-    {   // FASE 3 - Vale do Fim
-        corTopo: "#2c0703", corFundoBase: "#801313",
+    {   // FASE 3 - Vale do Fim (Com Chefe Final!)
+        nome: "Vale do Fim - CHEFE",
+        corTopo: "#1a0000", corFundoBase: "#660000",
+        corMontanha: "#330000",
         plataformas: [
-            { x: 0, y: 380, largura: 180, altura: 20 },
-            { x: 250, y: 310, largura: 100, altura: 20 },
-            { x: 430, y: 240, largura: 100, altura: 20 },
-            { x: 600, y: 170, largura: 200, altura: 20 }
+            { x: 0, y: 380, largura: 800, altura: 20 },
+            { x: 150, y: 280, largura: 120, altura: 20 },
+            { x: 530, y: 280, largura: 120, altura: 20 },
+            { x: 340, y: 200, largura: 120, altura: 20 }
         ],
         inimigos: [
-            { x: 260, y: 268, largura: 28, altura: 42, vel: 1.2, dir: 1, minX: 250, maxX: 320, tipo: "akatsuki" },
-            { x: 630, y: 128, largura: 28, altura: 42, vel: 2.2, dir: -1, minX: 600, maxX: 730, tipo: "akatsuki" }
+            { x: 400, y: 338, largura: 28, altura: 42, vel: 2.5, dir: -1, minX: 250, maxX: 730, tipo: "chefe", hp: 5, maxHp: 5 },
+            { x: 160, y: 238, largura: 28, altura: 42, vel: 1.2, dir: 1, minX: 150, maxX: 240, tipo: "akatsuki", hp: 2, maxHp: 2 }
         ],
-        porta: { x: 740, y: 110, largura: 40, altura: 60 }
+        porta: { x: 730, y: 310, largura: 50, altura: 70 }
     }
 ];
 
@@ -83,7 +98,7 @@ function carregarFase(index) {
     if (index >= fases.length) {
         vitoria = true;
         mensagemEl.style.color = "#2ecc71";
-        mensagemEl.innerText = "Tornaste-te um Hokage! Venceste o jogo!";
+        mensagemEl.innerText = "Parabéns! Derrotaste a Akatsuki e tornaste-te Hokage!";
         restartBtn.style.display = "block";
         return;
     }
@@ -96,18 +111,50 @@ function carregarFase(index) {
     jogador.y = 300;
     jogador.velY = 0;
     shurikens = [];
+    rasengans = [];
+    particulas = [];
+}
+
+// FUNÇÃO PARA CRIAR EXPLOSÃO DE FUMO NINJA
+function criarFumo(x, y, cor) {
+    for (let i = 0; i < 15; i++) {
+        particulas.push({
+            x: x + 14,
+            y: y + 20,
+            velX: (Math.random() - 0.5) * 6,
+            velY: (Math.random() - 0.5) * 6,
+            raio: Math.random() * 8 + 4,
+            vida: 25,
+            cor: cor
+        });
+    }
 }
 
 window.addEventListener("keydown", (e) => {
-    if (e.code === "KeyF" && podeAtirar && !gameOver && !vitoria) {
+    if (gameOver || vitoria) return;
+
+    // TECLA F: ATIRAR SHURIKEN
+    if (e.code === "KeyF" && podeAtirar) {
         shurikens.push({
             x: jogador.x + 14,
             y: jogador.y + 20,
-            velX: 8.5 * jogador.direcao,
+            velX: 9 * jogador.direcao,
             tamanho: 14
         });
         podeAtirar = false;
-        setTimeout(() => podeAtirar = true, 450);
+        setTimeout(() => podeAtirar = true, 400);
+    }
+
+    // TECLA R: LANÇAR RASENGAN (Gasta 50 de Chakra)
+    if (e.code === "KeyR" && chakra >= 50) {
+        chakra -= 50;
+        rasengans.push({
+            x: jogador.x + (jogador.direcao === 1 ? 30 : -20),
+            y: jogador.y + 10,
+            velX: 6.5 * jogador.direcao,
+            raio: 18,
+            vida: 60
+        });
     }
 });
 
@@ -115,6 +162,13 @@ function atualizar() {
     if (gameOver || vitoria) return;
 
     anguloShuriken += 0.35;
+    if (chakra < 100) chakra += 0.15; // Regenera Chakra aos poucos
+
+    // Nuvens no fundo
+    nuvens.forEach(n => {
+        n.x -= n.vel;
+        if (n.x < -100) n.x = canvas.width + 50;
+    });
 
     // Movimento do Naruto
     if (teclas["ArrowLeft"] || teclas["KeyA"]) { 
@@ -127,7 +181,7 @@ function atualizar() {
         frameAnimacao += 0.25;
     } else { 
         jogador.velX = 0; 
-        frameAnimacao = 0; // Fica parado em posição normal
+        frameAnimacao = 0;
     }
 
     if ((teclas["Space"] || teclas["ArrowUp"] || teclas["KeyW"]) && jogador.noChao) {
@@ -143,7 +197,7 @@ function atualizar() {
     if (jogador.x + jogador.largura > canvas.width) jogador.x = canvas.width - jogador.largura;
     if (jogador.y > canvas.height) perderVida();
 
-    // Colisão com Plataformas
+    // Plataformas
     jogador.noChao = false;
     plataformasAtuais.forEach(plat => {
         if (jogador.x < plat.x + plat.largura && jogador.x + jogador.largura > plat.x &&
@@ -154,33 +208,67 @@ function atualizar() {
         }
     });
 
-    // Passar de Fase (Portal/Pergaminho)
-    if (jogador.x < portaAtual.x + portaAtual.largura && jogador.x + jogador.largura > portaAtual.x &&
-        jogador.y < portaAtual.y + portaAtual.altura && jogador.y + jogador.altura > portaAtual.y) {
-        faseAtual++;
-        carregarFase(faseAtual);
+    // Passar de Fase (Só abre se derrotares todos os inimigos da fase!)
+    if (inimigosAtuais.length === 0) {
+        if (jogador.x < portaAtual.x + portaAtual.largura && jogador.x + jogador.largura > portaAtual.x &&
+            jogador.y < portaAtual.y + portaAtual.altura && jogador.y + jogador.altura > portaAtual.y) {
+            faseAtual++;
+            carregarFase(faseAtual);
+        }
     }
 
-    // Shurikens
+    // Atualizar Shurikens
     for (let i = shurikens.length - 1; i >= 0; i--) {
         let sh = shurikens[i];
         sh.x += sh.velX;
-        
-        if (sh.x < 0 || sh.x > canvas.width) {
-            shurikens.splice(i, 1);
-            continue;
-        }
+        if (sh.x < 0 || sh.x > canvas.width) { shurikens.splice(i, 1); continue; }
 
         for (let j = inimigosAtuais.length - 1; j >= 0; j--) {
             let inimigo = inimigosAtuais[j];
             if (sh.x < inimigo.x + inimigo.largura && sh.x + sh.tamanho > inimigo.x &&
                 sh.y < inimigo.y + inimigo.altura && sh.y + sh.tamanho > inimigo.y) {
-                inimigosAtuais.splice(j, 1);
+                inimigo.hp--;
                 shurikens.splice(i, 1);
-                pontos += 50;
+                criarFumo(inimigo.x, inimigo.y, "#fff");
+                if (inimigo.hp <= 0) {
+                    inimigosAtuais.splice(j, 1);
+                    pontos += (inimigo.tipo === "chefe" ? 300 : 50);
+                }
                 break;
             }
         }
+    }
+
+    // Atualizar Rasengans
+    for (let i = rasengans.length - 1; i >= 0; i--) {
+        let ras = rasengans[i];
+        ras.x += ras.velX;
+        ras.vida--;
+        if (ras.vida <= 0 || ras.x < 0 || ras.x > canvas.width) { rasengans.splice(i, 1); continue; }
+
+        for (let j = inimigosAtuais.length - 1; j >= 0; j--) {
+            let inimigo = inimigosAtuais[j];
+            if (ras.x - ras.raio < inimigo.x + inimigo.largura && ras.x + ras.raio > inimigo.x &&
+                ras.y - ras.raio < inimigo.y + inimigo.altura && ras.y + ras.raio > inimigo.y) {
+                inimigo.hp -= 3; // Rasengan tira 3 de vida de uma vez!
+                rasengans.splice(i, 1);
+                criarFumo(inimigo.x, inimigo.y, "#3498db");
+                if (inimigo.hp <= 0) {
+                    inimigosAtuais.splice(j, 1);
+                    pontos += (inimigo.tipo === "chefe" ? 300 : 100);
+                }
+                break;
+            }
+        }
+    }
+
+    // Atualizar Partículas de Fumo
+    for (let i = particulas.length - 1; i >= 0; i--) {
+        let p = particulas[i];
+        p.x += p.velX;
+        p.y += p.velY;
+        p.vida--;
+        if (p.vida <= 0) particulas.splice(i, 1);
     }
 
     // Inimigos
@@ -188,8 +276,8 @@ function atualizar() {
         inimigo.x += inimigo.vel * inimigo.dir;
         if (inimigo.x <= inimigo.minX || inimigo.x + inimigo.largura >= inimigo.maxX) inimigo.dir *= -1;
         
-        if (jogador.x + 4 < inimigo.x + inimigo.largura - 4 && jogador.x + jogador.largura - 4 > inimigo.x + 4 &&
-            jogador.y + 4 < inimigo.y + inimigo.altura && jogador.y + jogador.altura > inimigo.y + 4) {
+        if (!jogador.invulneravel && jogador.x + 5 < inimigo.x + inimigo.largura - 5 && jogador.x + jogador.largura - 5 > inimigo.x + 5 &&
+            jogador.y + 5 < inimigo.y + inimigo.altura && jogador.y + jogador.altura > inimigo.y + 5) {
             perderVida();
         }
     });
@@ -197,6 +285,7 @@ function atualizar() {
 
 function perderVida() {
     vidas--;
+    criarFumo(jogador.x, jogador.y, "#e74c3c");
     if (vidas <= 0) {
         gameOver = true;
         mensagemEl.style.color = "#e74c3c";
@@ -206,12 +295,15 @@ function perderVida() {
         jogador.x = 40;
         jogador.y = 300;
         jogador.velY = 0;
+        jogador.invulneravel = true;
+        setTimeout(() => jogador.invulneravel = false, 1500); // 1.5s de proteção ao renascer
     }
 }
 
 function reiniciarJogo() {
     vidas = 3;
     pontos = 0;
+    chakra = 100;
     faseAtual = 0;
     gameOver = false;
     vitoria = false;
@@ -221,67 +313,113 @@ function reiniciarJogo() {
     loop();
 }
 
-// FUNÇÃO PARA DESENHAR O NARUTO EM PIXEL ART COM BRAÇOS E PERNAS
+// DESENHAR CENÁRIO DE FUNDO (Montanhas e Nuvens)
+function desenharCenario() {
+    const gradiente = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradiente.addColorStop(0, faseAtiva.corTopo);
+    gradiente.addColorStop(1, faseAtiva.corFundoBase);
+    ctx.fillStyle = gradiente;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Nuvens
+    ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+    nuvens.forEach(n => {
+        ctx.fillRect(n.x, n.y, 70, 20);
+        ctx.fillRect(n.x + 15, n.y - 10, 40, 15);
+    });
+
+    // Montanhas ao fundo (Estilo Konoha)
+    ctx.fillStyle = faseAtiva.corMontanha;
+    ctx.beginPath();
+    ctx.moveTo(0, 380);
+    ctx.lineTo(150, 200);
+    ctx.lineTo(350, 380);
+    ctx.lineTo(500, 180);
+    ctx.lineTo(750, 380);
+    ctx.fill();
+}
+
+// PORTAL TORII JAPONÊS
+function desenharPortal() {
+    let x = portaAtual.x;
+    let y = portaAtual.y;
+    let aberto = inimigosAtuais.length === 0;
+
+    // Pilares vermelhos do Torii
+    ctx.fillStyle = aberto ? "#e74c3c" : "#555";
+    ctx.fillRect(x + 8, y + 10, 8, 60);
+    ctx.fillRect(x + 34, y + 10, 8, 60);
+    
+    // Topo do Torii
+    ctx.fillStyle = aberto ? "#c0392b" : "#333";
+    ctx.fillRect(x, y + 5, 50, 8);
+    ctx.fillRect(x + 4, y + 18, 42, 5);
+
+    // Brilho se o portal estiver desbloqueado
+    if (aberto) {
+        ctx.fillStyle = "rgba(241, 196, 15, 0.4)";
+        ctx.fillRect(x + 16, y + 23, 18, 47);
+    }
+}
+
+// NARUTO DETALHADO
 function desenharNaruto(x, y, dir, anim) {
+    if (jogador.invulneravel && Math.floor(Date.now() / 100) % 2 === 0) return; // Pisca quando renasce
+
     ctx.save();
-    // Espelha o personagem se estiver virado para a esquerda
     if (dir === -1) {
         ctx.translate(x + 28, y);
         ctx.scale(-1, 1);
-        x = 0;
-        y = 0;
+        x = 0; y = 0;
     }
 
-    let passo = Math.sin(anim) * 4; // Calcula o balanço das pernas e braços
-    if (!jogador.noChao) passo = 4; // Pose de salto
+    let passo = Math.sin(anim) * 4;
+    if (!jogador.noChao) passo = 4;
 
-    // 1. PERNAS E SANDÁLIAS NINJA (Laranja e Azul escuro)
-    ctx.fillStyle = "#e67e22"; // Calça laranja
-    ctx.fillRect(x + 6 - passo, y + 30, 6, 9);  // Perna esquerda
-    ctx.fillRect(x + 16 + passo, y + 30, 6, 9); // Perna direita
-    
-    ctx.fillStyle = "#2c3e50"; // Sandálias ninja
+    // Pernas e Sandálias
+    ctx.fillStyle = "#e67e22";
+    ctx.fillRect(x + 6 - passo, y + 30, 6, 9);
+    ctx.fillRect(x + 16 + passo, y + 30, 6, 9);
+    ctx.fillStyle = "#1a252f";
     ctx.fillRect(x + 6 - passo, y + 39, 7, 3);
     ctx.fillRect(x + 16 + passo, y + 39, 7, 3);
 
-    // 2. BRAÇO DE TRÁS
+    // Braço de trás
     ctx.fillStyle = "#d35400";
     ctx.fillRect(x + 10 + passo, y + 19, 6, 10);
 
-    // 3. TRONCO / CASACO (Laranja com ombros pretos)
-    ctx.fillStyle = "#e67e22"; // Laranja principal
+    // Casaco Laranja e Preto
+    ctx.fillStyle = "#e67e22";
     ctx.fillRect(x + 6, y + 17, 16, 13);
-    ctx.fillStyle = "#222"; // Parte preta nos ombros e zíper
+    ctx.fillStyle = "#111";
     ctx.fillRect(x + 6, y + 17, 16, 4);
     ctx.fillRect(x + 16, y + 17, 2, 13);
 
-    // 4. BRAÇO DA FRENTE E MÃO
-    ctx.fillStyle = "#f39c12"; // Manga laranja
+    // Braço da frente e Mão
+    ctx.fillStyle = "#f39c12";
     ctx.fillRect(x + 10 - passo, y + 19, 6, 8);
-    ctx.fillStyle = "#ffcc99"; // Mão cor de pele
+    ctx.fillStyle = "#ffcc99";
     ctx.fillRect(x + 10 - passo, y + 27, 5, 4);
 
-    // 5. CABEÇA E ROSTO
-    ctx.fillStyle = "#ffcc99"; // Pele
+    // Cabeça
+    ctx.fillStyle = "#ffcc99";
     ctx.fillRect(x + 6, y + 5, 16, 12);
-    // Olho azul e marquinhas na bochecha
-    ctx.fillStyle = "#2980b9";
+    ctx.fillStyle = "#2980b9"; // Olho
     ctx.fillRect(x + 17, y + 10, 3, 3);
-    ctx.fillStyle = "#b37700";
+    ctx.fillStyle = "#b37700"; // Marcas na bochecha
     ctx.fillRect(x + 13, y + 13, 3, 1);
     ctx.fillRect(x + 13, y + 15, 3, 1);
 
-    // 6. BANDANA DA ALDEIA DA FOLHA
-    ctx.fillStyle = "#1f618d"; // Tecido azul
+    // Bandana
+    ctx.fillStyle = "#1f618d";
     ctx.fillRect(x + 5, y + 5, 18, 4);
-    ctx.fillStyle = "#bdc3c7"; // Placa de metal
+    ctx.fillStyle = "#bdc3c7";
     ctx.fillRect(x + 12, y + 5, 10, 4);
-    // Pontas da bandana voando atrás
     ctx.fillStyle = "#1f618d";
     ctx.fillRect(x + 1, y + 6, 4, 3);
     ctx.fillRect(x - 1, y + 8, 3, 3);
 
-    // 7. CABELO LOIRO ESPETADO
+    // Cabelo Loiro
     ctx.fillStyle = "#f1c40f";
     ctx.fillRect(x + 5, y + 1, 18, 4);
     ctx.fillRect(x + 3, y + 3, 4, 3);
@@ -292,24 +430,22 @@ function desenharNaruto(x, y, dir, anim) {
     ctx.restore();
 }
 
-// FUNÇÃO PARA DESENHAR INIMIGOS NINJA
+// INIMIGOS E CHEFE FINAL
 function desenharInimigo(inimigo) {
     let x = inimigo.x;
     let y = inimigo.y;
     let passo = Math.sin(Date.now() * 0.01) * 3;
-    let corManto = inimigo.tipo === "akatsuki" ? "#111" : "#4a235a";
+    let corManto = inimigo.tipo === "renegado" ? "#4a235a" : "#111";
 
-    // Pernas
-    ctx.fillStyle = "#222";
+    // Pernas e Manto
+    ctx.fillStyle = "#111";
     ctx.fillRect(x + 6 - passo, y + 30, 6, 12);
     ctx.fillRect(x + 16 + passo, y + 30, 6, 12);
-
-    // Corpo / Manto Ninja
     ctx.fillStyle = corManto;
     ctx.fillRect(x + 5, y + 16, 18, 16);
 
-    // Nuvem vermelha se for Akatsuki
-    if (inimigo.tipo === "akatsuki") {
+    // Nuvem Akatsuki
+    if (inimigo.tipo !== "renegado") {
         ctx.fillStyle = "#e74c3c";
         ctx.fillRect(x + 10, y + 21, 7, 4);
     }
@@ -319,62 +455,41 @@ function desenharInimigo(inimigo) {
     ctx.fillRect(x + 2, y + 18 + passo, 4, 10);
     ctx.fillRect(x + 22, y + 18 - passo, 4, 10);
 
-    // Cabeça e Máscara Ninja
-    ctx.fillStyle = "#ffcc99";
-    ctx.fillRect(x + 7, y + 5, 14, 11);
-    ctx.fillStyle = "#222"; // Máscara tapando a boca
-    ctx.fillRect(x + 7, y + 11, 14, 5);
+    // Cabeça
+    if (inimigo.tipo === "chefe") {
+        // Máscara Laranja do Tobi/Obito!
+        ctx.fillStyle = "#e67e22";
+        ctx.fillRect(x + 7, y + 5, 14, 11);
+        ctx.fillStyle = "#ff0000"; // Sharingan
+        let olhoX = inimigo.dir === 1 ? x + 16 : x + 9;
+        ctx.fillRect(olhoX, y + 8, 3, 3);
+    } else {
+        ctx.fillStyle = "#ffcc99";
+        ctx.fillRect(x + 7, y + 5, 14, 11);
+        ctx.fillStyle = "#222";
+        ctx.fillRect(x + 7, y + 11, 14, 5);
+        ctx.fillStyle = "#ff0000";
+        let olhoOffset = inimigo.dir === 1 ? 14 : 8;
+        ctx.fillRect(x + olhoOffset, y + 8, 3, 2);
+        ctx.fillRect(x + olhoOffset + 4, y + 8, 3, 2);
+    }
 
-    // Olhos vermelhos ameaçadores
-    ctx.fillStyle = "#ff0000";
-    let olhoOffset = inimigo.dir === 1 ? 14 : 8;
-    ctx.fillRect(x + olhoOffset, y + 8, 3, 2);
-    ctx.fillRect(x + olhoOffset + 4, y + 8, 3, 2);
-
-    // Bandana preta
-    ctx.fillStyle = "#000";
-    ctx.fillRect(x + 6, y + 4, 16, 3);
-}
-
-// FUNÇÃO PARA DESENHAR SHURIKEN DE 4 PONTAS
-function desenharShuriken(sh) {
-    ctx.save();
-    ctx.translate(sh.x, sh.y);
-    ctx.rotate(anguloShuriken);
-    
-    ctx.fillStyle = "#bdc3c7"; // Metal
-    // Lâmina horizontal
-    ctx.fillRect(-sh.tamanho/2, -2, sh.tamanho, 4);
-    // Lâmina vertical
-    ctx.fillRect(-2, -sh.tamanho/2, 4, sh.tamanho);
-    
-    // Centro escuro (furo da shuriken)
-    ctx.fillStyle = "#2c3e50";
-    ctx.fillRect(-2, -2, 4, 4);
-    
-    ctx.restore();
+    // Barra de Vida por cima dos inimigos fortes
+    if (inimigo.maxHp > 1) {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(x, y - 8, 28, 4);
+        ctx.fillStyle = "#e74c3c";
+        ctx.fillRect(x, y - 8, (inimigo.hp / inimigo.maxHp) * 28, 4);
+    }
 }
 
 function desenhar() {
-    // Céu em Degradê
-    const gradiente = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradiente.addColorStop(0, faseAtiva.corTopo);
-    gradiente.addColorStop(1, faseAtiva.corFundoBase);
-    ctx.fillStyle = gradiente;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    desenharCenario();
+    desenharPortal();
 
-    // Portal de Saída (Torii / Portal Dourado)
-    ctx.fillStyle = "#f1c40f";
-    ctx.fillRect(portaAtual.x, portaAtual.y, portaAtual.largura, portaAtual.altura);
-    ctx.fillStyle = "#e67e22";
-    ctx.fillRect(portaAtual.x + 5, portaAtual.y + 5, portaAtual.largura - 10, portaAtual.altura - 5);
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(portaAtual.x, portaAtual.y, portaAtual.largura, portaAtual.altura);
-
-    // Plataformas (Relva e Terra)
+    // Plataformas
     plataformasAtuais.forEach(p => {
-        ctx.fillStyle = "#6e473b";
+        ctx.fillStyle = "#5d4037";
         ctx.fillRect(p.x, p.y + 7, p.largura, p.altura - 7);
         ctx.fillStyle = "#27ae60";
         ctx.fillRect(p.x, p.y, p.largura, 7);
@@ -383,23 +498,69 @@ function desenhar() {
         ctx.strokeRect(p.x, p.y, p.largura, p.altura);
     });
 
-    // Desenhar Inimigos
+    // Inimigos
     inimigosAtuais.forEach(i => desenharInimigo(i));
 
-    // Desenhar Shurikens
-    shurikens.forEach(sh => desenharShuriken(sh));
+    // Shurikens
+    shurikens.forEach(sh => {
+        ctx.save();
+        ctx.translate(sh.x, sh.y);
+        ctx.rotate(anguloShuriken);
+        ctx.fillStyle = "#bdc3c7";
+        ctx.fillRect(-sh.tamanho/2, -2, sh.tamanho, 4);
+        ctx.fillRect(-2, -sh.tamanho/2, 4, sh.tamanho);
+        ctx.fillStyle = "#2c3e50";
+        ctx.fillRect(-2, -2, 4, 4);
+        ctx.restore();
+    });
 
-    // Desenhar Naruto
+    // Rasengans (Esferas de Chakra Azul!)
+    rasengans.forEach(ras => {
+        ctx.beginPath();
+        ctx.arc(ras.x, ras.y, ras.raio, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(52, 152, 219, 0.7)";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(ras.x, ras.y, ras.raio * 0.6, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+    });
+
+    // Partículas de Fumo
+    particulas.forEach(p => {
+        ctx.fillStyle = p.cor;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.raio, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
     desenharNaruto(jogador.x, jogador.y, jogador.direcao, frameAnimacao);
 
-    // Placar
-    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-    ctx.fillRect(10, 10, 140, 85);
+    // INTERFACE (HUD Ninja)
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(10, 10, 210, 105);
+    ctx.strokeStyle = "#e67e22";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, 210, 105);
+
     ctx.fillStyle = "#fff";
-    ctx.font = "bold 16px Arial";
-    ctx.fillText("Pontos: " + pontos, 20, 32);
-    ctx.fillText("Vidas: " + vidas, 20, 56);
-    ctx.fillText("Fase: " + (faseAtual + 1) + " / " + fases.length, 20, 80);
+    ctx.font = "bold 14px Arial";
+    ctx.fillText("Fase: " + faseAtiva.nome, 20, 30);
+    ctx.fillText("Pontos: " + pontos + "  |  Vidas: " + vidas, 20, 52);
+
+    // Barra de Chakra Azul
+    ctx.fillText("Chakra (Tecla R):", 20, 74);
+    ctx.fillStyle = "#333";
+    ctx.fillRect(20, 80, 180, 12);
+    ctx.fillStyle = chakra >= 50 ? "#00f2fe" : "#2980b9";
+    ctx.fillRect(20, 80, (chakra / 100) * 180, 12);
+    
+    // Aviso para derrotar inimigos antes de passar
+    if (inimigosAtuais.length > 0) {
+        ctx.fillStyle = "#f1c40f";
+        ctx.font = "bold 13px Arial";
+        ctx.fillText("Derrota os inimigos para abrir o portal!", 520, 25);
+    }
 }
 
 function loop() {
